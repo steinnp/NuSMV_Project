@@ -137,21 +137,24 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   -- * Otherwise, do not send commands to the door.
   ASSIGN
     door_cmd := case
-	  direction != stop : nop;
+	    direction != stop : nop;
       floor = 1 & pressed_1 & door = closed : open;
       floor = 2 & pressed_2 & door = closed : open;
       floor = 3 & pressed_3 & door = closed : open;
-      door = open & ((floor = 1 & (pressed_2 | pressed_3)) | 
+      door = open & ((floor = 1 & (pressed_2 | pressed_3)) |
                      (floor = 2 & (pressed_1 | pressed_3)) |
                      (floor = 3 & (pressed_1 | pressed_2))
                     ): close;
       TRUE : nop;
       esac;
 
+
   -- Variable "last_dir" records the last movement direction of the cabin.
   VAR
     last_dir : {up,down};
+    queue: boolean;
   ASSIGN
+
     next(last_dir) :=
       case
         direction = stop : last_dir;
@@ -174,16 +177,19 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
       (floor = 1 & pressed_1) | (floor = 2 & pressed_2) | (floor = 3 & pressed_3) : stop;
       floor = 1 & (pressed_2 | pressed_3) : up;
       floor = 3 & (pressed_2 | pressed_1) : down;
-      floor = 2 & pressed_3 & pressed_1 : last_dir;
+      floor = 2 & pressed_3 & pressed_1 & direction = stop: down;
+      floor = 2 & pressed_3 & pressed_1: direction;
+      floor = 2 & pressed_3 & pressed_1: up;
       floor = 2 & pressed_3 : up;
       floor = 2 & pressed_1 : down;
       TRUE : stop;
       esac;
 
+
   -- The cabin needs to stop before it can change direction.
   SPEC AG(direction = up) -> AX(direction != down)
   SPEC AG(direction = down) -> AX(direction != up)
-
+  LTLSPEC G(pressed_1 -> F !pressed_1)
 ---------------------------------------------------------------------------
 -- MAIN                                                                  --
 ---------------------------------------------------------------------------
