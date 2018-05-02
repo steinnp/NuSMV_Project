@@ -114,9 +114,9 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   -- Button N is reset only if it is pressed, we are at floor N, and
   -- the door is open.
   ASSIGN
-    reset_1 := (pressed_1 & floor = 1 & door = open);
-    reset_2 := (pressed_2 & floor = 2 & door = open);
-    reset_3 := (pressed_3 & floor = 3 & door = open);
+    reset_1 := (pressed_1 & floor = 1 & door = open & !sensor);
+    reset_2 := (pressed_2 & floor = 2 & door = open & !sensor);
+    reset_3 := (pressed_3 & floor = 3 & door = open & !sensor);
 
   -- Check whether there are pending requests at the current floor,
   -- at a higher floor, and at a lower floor.
@@ -204,9 +204,9 @@ FAIRNESS
   LTLSPEC G(reset_1 -> reset_1 U (floor = 1 & door = open))
   LTLSPEC G(reset_2 -> reset_2 U (floor = 2 & door = open))
   LTLSPEC G(reset_3 -> reset_3 U (floor = 3 & door = open))
-  LTLSPEC G(pressed_1 & floor = 1 & door = open -> reset_1)
-  LTLSPEC G(pressed_2 & floor = 2 & door = open -> reset_2)
-  LTLSPEC G(pressed_3 & floor = 3 & door = open -> reset_3)
+  LTLSPEC G(pressed_1 & floor = 1 & door = open & !sensor -> reset_1)
+  LTLSPEC G(pressed_2 & floor = 2 & door = open & !sensor -> reset_2)
+  LTLSPEC G(pressed_3 & floor = 3 & door = open & !sensor -> reset_3)
   LTLSPEC G(direction = up | direction = down -> door = closed)
   LTLSPEC G(!pressed_1 & !pressed_2 & !pressed_3 -> door_cmd = nop & direction = stop)
   SPEC AG(door = closed -> !sensor)
