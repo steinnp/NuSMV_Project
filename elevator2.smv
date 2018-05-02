@@ -264,6 +264,8 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
 
   LTLSPEC G(earthquake -> X(direction = stop))
   LTLSPEC G(earthquake -> F[1,4](door = open))
+  LTLSPEC G(earthquake & direction = stop -> direction = stop U repair)
+
 ---------------------------------------------------------------------------
 -- MAIN                                                                  --
 ---------------------------------------------------------------------------
