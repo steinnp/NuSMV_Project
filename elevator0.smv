@@ -138,13 +138,9 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   ASSIGN
     door_cmd := case
 	    direction != stop : nop;
-      floor = 1 & pressed_1 & door = closed : open;
-      floor = 2 & pressed_2 & door = closed : open;
-      floor = 3 & pressed_3 & door = closed : open;
-      door = open & ((floor = 1 & (pressed_2 | pressed_3)) |
-                     (floor = 2 & (pressed_1 | pressed_3)) |
-                     (floor = 3 & (pressed_1 | pressed_2))
-                    ): close;
+      pending_here & door = closed : open;
+
+      door = open & ( pending_up | pending_down ): close;
       TRUE : nop;
       esac;
 
@@ -173,14 +169,11 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
     next(direction) :=
       case
       door = open | door_cmd = open : stop;
-      (floor = 1 & pressed_1) | (floor = 2 & pressed_2) | (floor = 3 & pressed_3) : stop;
-      floor = 1 & (pressed_2 | pressed_3) : up;
-      floor = 3 & (pressed_2 | pressed_1) : down;
-      floor = 2 & pressed_3 & pressed_1 & direction = stop: last_dir;
-      floor = 2 & pressed_3 & pressed_1: direction;
-      floor = 2 & pressed_3 & pressed_1: up;
-      floor = 2 & pressed_3 : up;
-      floor = 2 & pressed_1 : down;
+      pending_here : stop;
+      pending_up & pending_down & direction = stop : last_dir;
+      pending_up & pending_down: direction;
+      pending_up : up;
+      pending_down : down;
       TRUE : stop;
       esac;
 
@@ -262,4 +255,55 @@ MODULE main
   -- REQ: If no button is pressed, the controller must issue no commands
   --      and the cabin must be stopped.
 
----------------------------------------------------------------------------
+------------------------------------------------------------------------
+/--
+-- 173     pending_up & pending_down & direction = stop : last_dir;
+By removing this model we get a case were we we are standing at stop
+and it will just stay, because it keeps the direction and both 1 & 3 are pressed.
+
+-- specification  G (pressed_3 ->  F !pressed_3) IN ctrl is false
+-- as demonstrated by the following execution sequence
+Trace Description: LTL Counterexample
+  Trace Type: Counterexample
+  -> State: 2.1 <-
+    cabin.floor = 2
+    door.status = open
+    button_1.pressed = FALSE
+    button_2.pressed = FALSE
+    button_3.pressed = FALSE
+    ctrl.direction = stop
+    ctrl.door_cmd = nop
+    ctrl.reset_1 = FALSE
+    ctrl.reset_2 = FALSE
+    ctrl.reset_3 = FALSE
+    ctrl.last_dir = up
+    cabin.N = 3
+    ctrl.pending_down = FALSE
+    ctrl.pending_up = FALSE
+    ctrl.pending_here = FALSE
+  -> State: 2.2 <-
+    button_2.pressed = TRUE
+    button_3.pressed = TRUE
+    ctrl.door_cmd = close
+    ctrl.reset_2 = TRUE
+    ctrl.pending_up = TRUE
+    ctrl.pending_here = TRUE
+  -- Loop starts here
+  -> State: 2.3 <-
+    door.status = closed
+    button_1.pressed = TRUE
+    button_2.pressed = FALSE
+    ctrl.door_cmd = nop
+    ctrl.reset_2 = FALSE
+    ctrl.pending_down = TRUE
+    ctrl.pending_here = FALSE
+  -> State: 2.4 <-
+-- specification  G (reset_1 -> (reset_1 U (floor = 1 & door = open))) IN ctrl is true
+-- specification  G (reset_2 -> (reset_2 U (floor = 2 & door = open))) IN ctrl is true
+-- specification  G (reset_3 -> (reset_3 U (floor = 3 & door = open))) IN ctrl is true
+-- specification  G (((pressed_1 & floor = 1) & door = open) -> reset_1) IN ctrl is true
+-- specification  G (((pressed_2 & floor = 2) & door = open) -> reset_2) IN ctrl is true
+-- specification  G (((pressed_3 & floor = 3) & door = open) -> reset_3) IN ctrl is true
+-- specification  G ((direction = up | direction = down) -> door = closed) IN ctrl is true
+-- specification  G (((!pressed_1 & !pressed_2) & !pressed_3) -> (door_cmd = nop & direction = stop)) IN ctrl is true
+--/
