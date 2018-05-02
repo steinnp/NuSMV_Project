@@ -25,7 +25,8 @@ MODULE Button(reset)
       case
         pressed & reset  : FALSE;
         pressed & !reset : TRUE;
-        !pressed         : {FALSE,TRUE};
+        !pressed & !reset : {FALSE,TRUE};
+        TRUE: FALSE;
       esac;
 
   -- REQ: The controller must not reset a button that is not pressed.
@@ -201,9 +202,11 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
       esac;
 
     ASSIGN
-      earthquake := case
+      init(earthquake) := {TRUE, FALSE};
+      next(earthquake) := case
         repair: FALSE;
-        TRUE: {TRUE, FALSE};
+        earthquake: TRUE;
+        !earthquake: {TRUE, FALSE};
       esac;
 
     ASSIGN
@@ -257,9 +260,10 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
 
   -- 10. If no button is pressed, the controller must issue no commands and the cabin must be stopped.
   LTLSPEC G(!pressed_1 & !pressed_2 & !pressed_3 -> (door_cmd = nop & direction = stop) | earthquake)
- -- LTLSPEC G(earthquake -> next(pressed_1) = FALSE) -- & !next(pressed_2) & !next(pressed_3))
+  LTLSPEC G(earthquake -> X(!pressed_1 & !pressed_2 & !pressed_3))
 
---  LTLSPEC G(earthquake & next(direction) = stop)
+  LTLSPEC G(earthquake -> X(direction = stop))
+  LTLSPEC G(earthquake -> F[1,4](door = open))
 ---------------------------------------------------------------------------
 -- MAIN                                                                  --
 ---------------------------------------------------------------------------
