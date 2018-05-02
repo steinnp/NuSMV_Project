@@ -158,7 +158,6 @@ ASSIGN
 FAIRNESS
   sensor
 
-
   -- Variable "last_dir" records the last movement direction of the cabin.
   VAR
     last_dir : {up,down};
@@ -198,17 +197,44 @@ FAIRNESS
   -- The cabin needs to stop before it can change direction.
   SPEC AG(direction = up) -> AX(direction != down)
   SPEC AG(direction = down) -> AX(direction != up)
+
+  -- 1. The controller must not reset a button that is not pressed.
+  LTLSPEC G((!pressed_1 -> !reset_1) & (!pressed_2 -> !reset_2) & (!pressed_3 -> !reset_3))
+
+  --  2. The cabin can move up only if the floor is not N.
+  LTLSPEC G(X(direction = up) -> floor != 3)
+
+  --  3. The cabin can move down only if the floor is not 1
+  LTLSPEC G(X(direction = down) -> floor != 1)
+
+  --  4. The controller can issue an open command only if the door is closed
+  LTLSPEC G(door_cmd = open -> door = closed)
+
+  --  5. The controller can issue a close command only if the door is open.
+  LTLSPEC G(door_cmd = close -> door = open)
+
+  --  6. No button can reach a state where it remains pressed forever.
   LTLSPEC G(pressed_1 -> F !pressed_1)
   LTLSPEC G(pressed_2 -> F !pressed_2)
   LTLSPEC G(pressed_3 -> F !pressed_3)
+
+  --  7. No pressed button can be reset until the cabin stops at the corresponding floor and opens the door.
   LTLSPEC G(reset_1 -> reset_1 U (floor = 1 & door = open))
   LTLSPEC G(reset_2 -> reset_2 U (floor = 2 & door = open))
   LTLSPEC G(reset_3 -> reset_3 U (floor = 3 & door = open))
+
+  --  8. A button must be reset as soon as the cabin stops at the corresponding floor with the door open.
   LTLSPEC G(pressed_1 & floor = 1 & door = open & !sensor -> reset_1)
   LTLSPEC G(pressed_2 & floor = 2 & door = open & !sensor -> reset_2)
   LTLSPEC G(pressed_3 & floor = 3 & door = open & !sensor -> reset_3)
+
+  -- 9. The cabin can move only when the door is closed.
   LTLSPEC G(direction = up | direction = down -> door = closed)
+
+  -- 10. If no button is pressed, the controller must issue no commands and the cabin must be stopped.
   LTLSPEC G(!pressed_1 & !pressed_2 & !pressed_3 -> door_cmd = nop & direction = stop)
+
+  -- 3.1 The door never closes when the sensor is on.
   SPEC AG(door = closed -> !sensor)
 ---------------------------------------------------------------------------
 -- MAIN                                                                  --
