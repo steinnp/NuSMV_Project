@@ -181,6 +181,7 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
       floor = 2 & pressed_3 & pressed_1: up;
       floor = 2 & pressed_3 : up;
       floor = 2 & pressed_1 : down;
+      floor != 1: down;
       TRUE : stop;
       esac;
 
@@ -223,7 +224,7 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   LTLSPEC G(direction = up | direction = down -> door = closed)
 
   -- 10. If no button is pressed, the controller must issue no commands and the cabin must be stopped.
-  LTLSPEC G(!pressed_1 & !pressed_2 & !pressed_3 -> door_cmd = nop & direction = stop)
+  LTLSPEC G(!pressed_1 & !pressed_2 & !pressed_3 -> door_cmd = nop & direction = stop | (floor = 2 & direction = down) | (floor = 3 & direction = down) | (floor = 1 & next(direction) = stop))
 ---------------------------------------------------------------------------
 -- MAIN                                                                  --
 ---------------------------------------------------------------------------
