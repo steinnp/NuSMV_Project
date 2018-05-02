@@ -119,9 +119,9 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_up_2, pressed_down_2, pre
     reset_1 := (pressed_1 & floor = 1 & door = open);
     reset_2 := (floor = 2 & door = open);
     reset_up_2 := (floor = 2 & door = open & last_dir = up) |
-                  (floor = 2 & door = open & !pressed_1 & !pressed_down_2);
+                  (floor = 2 & door = open & !pressed_1);
     reset_down_2 := (floor = 2 & door = open & last_dir = down) |
-                    (floor = 2 & door = open & !pressed_3 & !pressed_up_2);
+                    (floor = 2 & door = open & !pressed_3);
     reset_3 := (pressed_3 & floor = 3 & door = open);
 
   -- Check whether there are pending requests at the current floor,
@@ -150,9 +150,9 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_up_2, pressed_down_2, pre
       floor = 1 & pressed_1 & door = closed : open;
       floor = 2 & pressed_2 & door = closed : open;
       floor = 2 & pressed_up_2 & door = closed & last_dir = up : open;
-      --floor = 2 & pressed_up_2 & door = closed & !pressed_1 : open;
+      floor = 2 & pressed_up_2 & door = closed & !pressed_1 : open;
       floor = 2 & pressed_down_2 & door = closed & last_dir = down : open;
-      --floor = 2 & pressed_down_2 & door = closed & !pressed_3 : open;
+      floor = 2 & pressed_down_2 & door = closed & !pressed_3 : open;
       floor = 3 & pressed_3 & door = closed : open;
       door = open & ((floor = 1 & (pressed_2 | pressed_3 | pressed_up_2 | pressed_down_2)) |
                      (floor = 2 & (pressed_1 | pressed_3)) |
@@ -188,9 +188,9 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_up_2, pressed_down_2, pre
       door = open | door_cmd = open : stop;
       (floor = 1 & pressed_1) | (floor = 2 & pressed_2) | (floor = 3 & pressed_3) : stop;
       floor = 2 & pressed_up_2 & last_dir = up : stop;
-      --floor = 2 & pressed_up_2 & !pressed_1 & !reset_down_2 : stop;
+      floor = 2 & pressed_up_2 & !pressed_1 : stop;
       floor = 2 & pressed_down_2 & last_dir = down : stop;
-      --floor = 2 & pressed_down_2 & !pressed_3 & !reset_up_2 : stop;
+      floor = 2 & pressed_down_2 & !pressed_3 : stop;
       floor = 1 & (pressed_2 | pressed_3) : up;
       floor = 3 & (pressed_2 | pressed_1) : down;
       floor = 2 & pressed_3 & pressed_1 & direction = stop: last_dir;
