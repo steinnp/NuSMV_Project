@@ -210,9 +210,9 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   LTLSPEC G(pressed_3 -> F !pressed_3)
 
   --  7. No pressed button can be reset until the cabin stops at the corresponding floor and opens the door.
-  LTLSPEC G(reset_1 -> reset_1 U (floor = 1 & door = open))
-  LTLSPEC G(reset_2 -> reset_2 U (floor = 2 & door = open))
-  LTLSPEC G(reset_3 -> reset_3 U (floor = 3 & door = open))
+  LTLSPEC G(reset_1 -> pressed_1 U (floor = 1 & door = open))
+  LTLSPEC G(reset_2 -> pressed_2 U (floor = 2 & door = open))
+  LTLSPEC G(reset_3 -> pressed_3 U (floor = 3 & door = open))
 
   --  8. A button must be reset as soon as the cabin stops at the corresponding floor with the door open.
   LTLSPEC G(pressed_1 & floor = 1 & door = open -> reset_1)

@@ -216,7 +216,7 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   LTLSPEC G(door_cmd = close -> door = open)
 
   --  6. No button can reach a state where it remains pressed forever.
-  LTLSPEC G(pressed_1 -> X !pressed_1)
+  LTLSPEC G(pressed_1 -> F !pressed_1)
   LTLSPEC G(pressed_2 -> F !pressed_2)
   LTLSPEC G(pressed_3 -> F !pressed_3)
 
@@ -279,6 +279,8 @@ MODULE main
 ---------------------------------------------------------------------------
 
 /--
+Documentation of an faulty property:
+------------------------------------
 Here we have a counterexample for a faulty property, we are saying that
 the next state of a pressed button should be not pressed. However, since it might
 take longer for it to reach that state, it will not always be correct.
