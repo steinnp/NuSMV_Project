@@ -109,7 +109,13 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
     reset_1 : boolean;
     reset_2 : boolean;
     reset_3 : boolean;
-    sensor  : boolean;
+
+  -- Button N is reset only if it is pressed, we are at floor N, and
+  -- the door is open.
+  ASSIGN
+    reset_1 := (pressed_1 & floor = 1 & door = open);
+    reset_2 := (pressed_2 & floor = 2 & door = open);
+    reset_3 := (pressed_3 & floor = 3 & door = open);
 
   -- Check whether there are pending requests at the current floor,
   -- at a higher floor, and at a lower floor.
@@ -135,30 +141,13 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
       floor = 1 & pressed_1 & door = closed : open;
       floor = 2 & pressed_2 & door = closed : open;
       floor = 3 & pressed_3 & door = closed : open;
-      door = open & !sensor & ((floor = 1 & (pressed_2 | pressed_3)) |
+      door = open & ((floor = 1 & (pressed_2 | pressed_3)) |
                      (floor = 2 & (pressed_1 | pressed_3)) |
                      (floor = 3 & (pressed_1 | pressed_2))
                     ): close;
       TRUE : nop;
       esac;
 
-  ASSIGN
-    sensor := case
-      door = open:  {TRUE, FALSE};
-      TRUE: FALSE;
-    esac;
-
-  FAIRNESS
-    sensor
-  FAIRNESS
-    !sensor
-
-  -- Button N is reset only if it is pressed, we are at floor N, and
-  -- the door is open.
-  ASSIGN
-    reset_1 := (pressed_1 & floor = 1 & door = open & !sensor);
-    reset_2 := (pressed_2 & floor = 2 & door = open & !sensor);
-    reset_3 := (pressed_3 & floor = 3 & door = open & !sensor);
 
   -- Variable "last_dir" records the last movement direction of the cabin.
   VAR
@@ -192,6 +181,7 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
       floor = 2 & pressed_3 & pressed_1: up;
       floor = 2 & pressed_3 : up;
       floor = 2 & pressed_1 : down;
+      floor != 1: down;
       TRUE : stop;
       esac;
 
@@ -216,7 +206,7 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   LTLSPEC G(door_cmd = close -> door = open)
 
   --  6. No button can reach a state where it remains pressed forever.
-  LTLSPEC G(pressed_1 -> X !pressed_1)
+  LTLSPEC G(pressed_1 -> F !pressed_1)
   LTLSPEC G(pressed_2 -> F !pressed_2)
   LTLSPEC G(pressed_3 -> F !pressed_3)
 
@@ -226,18 +216,15 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   LTLSPEC G(reset_3 -> reset_3 U (floor = 3 & door = open))
 
   --  8. A button must be reset as soon as the cabin stops at the corresponding floor with the door open.
-  LTLSPEC G(pressed_1 & floor = 1 & door = open & !sensor -> reset_1)
-  LTLSPEC G(pressed_2 & floor = 2 & door = open & !sensor -> reset_2)
-  LTLSPEC G(pressed_3 & floor = 3 & door = open & !sensor -> reset_3)
+  LTLSPEC G(pressed_1 & floor = 1 & door = open -> reset_1)
+  LTLSPEC G(pressed_2 & floor = 2 & door = open -> reset_2)
+  LTLSPEC G(pressed_3 & floor = 3 & door = open -> reset_3)
 
   -- 9. The cabin can move only when the door is closed.
   LTLSPEC G(direction = up | direction = down -> door = closed)
 
   -- 10. If no button is pressed, the controller must issue no commands and the cabin must be stopped.
-  LTLSPEC G(!pressed_1 & !pressed_2 & !pressed_3 -> door_cmd = nop & direction = stop)
-
-  -- 3.1 The door never closes when the sensor is on.
-  SPEC AG(door = closed -> !sensor)
+  LTLSPEC G(!pressed_1 & !pressed_2 & !pressed_3 -> door_cmd = nop & direction = stop | (floor = 2 & direction = down) | (floor = 3 & direction = down) | (floor = 1 & next(direction) = stop))
 ---------------------------------------------------------------------------
 -- MAIN                                                                  --
 ---------------------------------------------------------------------------
@@ -277,146 +264,3 @@ MODULE main
   --      and the cabin must be stopped.
 
 ---------------------------------------------------------------------------
-
-/--
-Here we have a counterexample for a faulty property, we are saying that
-the next state of a pressed button should be not pressed. However, since it might
-take longer for it to reach that state, it will not always be correct.
-
--- specification  G (pressed_1 ->  X !pressed_1) IN ctrl is false
--- as demonstrated by the following execution sequence
-Trace Description: LTL Counterexample
-Trace Type: Counterexample
-  -> State: 1.1 <-
-    cabin.floor = 1
-    door.status = closed
-    button_1.pressed = FALSE
-    button_2.pressed = FALSE
-    button_3.pressed = FALSE
-    ctrl.direction = stop
-    ctrl.door_cmd = nop
-    ctrl.reset_1 = FALSE
-    ctrl.reset_2 = FALSE
-    ctrl.reset_3 = FALSE
-    ctrl.sensor = FALSE
-    ctrl.last_dir = up
-    cabin.N = 3
-    ctrl.pending_down = FALSE
-    ctrl.pending_up = FALSE
-    ctrl.pending_here = FALSE
-  -> State: 1.2 <-
-    button_1.pressed = TRUE
-    ctrl.door_cmd = open
-    ctrl.pending_here = TRUE
-  -> State: 1.3 <-
-    door.status = open
-    ctrl.door_cmd = nop
-    ctrl.sensor = TRUE
-  -> State: 1.4 <-
-    button_2.pressed = TRUE
-    ctrl.door_cmd = close
-    ctrl.reset_1 = TRUE
-    ctrl.sensor = FALSE
-    ctrl.pending_up = TRUE
-  -> State: 1.5 <-
-    door.status = closed
-    button_1.pressed = FALSE
-    ctrl.door_cmd = nop
-    ctrl.reset_1 = FALSE
-    ctrl.pending_here = FALSE
-  -> State: 1.6 <-
-    cabin.floor = 2
-    ctrl.direction = up
-    ctrl.pending_up = FALSE
-    ctrl.pending_here = TRUE
-  -> State: 1.7 <-
-    ctrl.direction = stop
-    ctrl.door_cmd = open
-  -> State: 1.8 <-
-    door.status = open
-    ctrl.door_cmd = nop
-    ctrl.sensor = TRUE
-  -> State: 1.9 <-
-    button_3.pressed = TRUE
-    ctrl.door_cmd = close
-    ctrl.reset_2 = TRUE
-    ctrl.sensor = FALSE
-    ctrl.pending_up = TRUE
-  -> State: 1.10 <-
-    door.status = closed
-    button_2.pressed = FALSE
-    ctrl.door_cmd = nop
-    ctrl.reset_2 = FALSE
-    ctrl.pending_here = FALSE
-  -> State: 1.11 <-
-    cabin.floor = 3
-    ctrl.direction = up
-    ctrl.pending_up = FALSE
-    ctrl.pending_here = TRUE
-  -> State: 1.12 <-
-    ctrl.direction = stop
-    ctrl.door_cmd = open
-  -> State: 1.13 <-
-    door.status = open
-    ctrl.door_cmd = nop
-    ctrl.sensor = TRUE
-  -> State: 1.14 <-
-    button_2.pressed = TRUE
-    ctrl.door_cmd = close
-    ctrl.reset_3 = TRUE
-    ctrl.sensor = FALSE
-    ctrl.pending_down = TRUE
-  -- Loop starts here
-  -> State: 1.15 <-
-    door.status = closed
-    button_3.pressed = FALSE
-    ctrl.door_cmd = nop
-    ctrl.reset_3 = FALSE
-    ctrl.pending_here = FALSE
-  -> State: 1.16 <-
-    cabin.floor = 2
-    ctrl.direction = down
-    ctrl.pending_down = FALSE
-    ctrl.pending_here = TRUE
-  -> State: 1.17 <-
-    ctrl.direction = stop
-    ctrl.door_cmd = open
-    ctrl.last_dir = down
-  -> State: 1.18 <-
-    door.status = open
-    ctrl.door_cmd = nop
-    ctrl.sensor = TRUE
-  -> State: 1.19 <-
-    button_3.pressed = TRUE
-    ctrl.door_cmd = close
-    ctrl.reset_2 = TRUE
-    ctrl.sensor = FALSE
-    ctrl.pending_up = TRUE
-  -> State: 1.20 <-
-    door.status = closed
-    button_2.pressed = FALSE
-    ctrl.door_cmd = nop
-    ctrl.reset_2 = FALSE
-    ctrl.pending_here = FALSE
-  -> State: 1.21 <-
-    cabin.floor = 3
-    ctrl.direction = up
-    ctrl.pending_up = FALSE
-    ctrl.pending_here = TRUE
-  -> State: 1.22 <-
-    ctrl.direction = stop
-    ctrl.door_cmd = open
-    ctrl.last_dir = up
-  -> State: 1.23 <-
-    door.status = open
-    button_2.pressed = TRUE
-    ctrl.door_cmd = close
-    ctrl.reset_3 = TRUE
-    ctrl.pending_down = TRUE
-  -> State: 1.24 <-
-    door.status = closed
-    button_3.pressed = FALSE
-    ctrl.door_cmd = nop
-    ctrl.reset_3 = FALSE
-    ctrl.pending_here = FALSE
---/
