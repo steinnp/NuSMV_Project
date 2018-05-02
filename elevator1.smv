@@ -135,7 +135,7 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
       floor = 1 & pressed_1 & door = closed : open;
       floor = 2 & pressed_2 & door = closed : open;
       floor = 3 & pressed_3 & door = closed : open;
-      door = open & !sensor & ((floor = 1 & (pressed_2 | pressed_3)) | 
+      door = open & !sensor & ((floor = 1 & (pressed_2 | pressed_3)) |
                      (floor = 2 & (pressed_1 | pressed_3)) |
                      (floor = 3 & (pressed_1 | pressed_2))
                     ): close;
@@ -216,7 +216,7 @@ MODULE CTRL(floor, door, pressed_1, pressed_2, pressed_3)
   LTLSPEC G(door_cmd = close -> door = open)
 
   --  6. No button can reach a state where it remains pressed forever.
-  LTLSPEC G(pressed_1 -> F !pressed_1)
+  LTLSPEC G(pressed_1 -> X !pressed_1)
   LTLSPEC G(pressed_2 -> F !pressed_2)
   LTLSPEC G(pressed_3 -> F !pressed_3)
 
@@ -277,3 +277,146 @@ MODULE main
   --      and the cabin must be stopped.
 
 ---------------------------------------------------------------------------
+
+/--
+Here we have a counterexample for a faulty property, we are saying that
+the next state of a pressed button should be not pressed. However, since it might
+take longer for it to reach that state, it will not always be correct.
+
+-- specification  G (pressed_1 ->  X !pressed_1) IN ctrl is false
+-- as demonstrated by the following execution sequence
+Trace Description: LTL Counterexample
+Trace Type: Counterexample
+  -> State: 1.1 <-
+    cabin.floor = 1
+    door.status = closed
+    button_1.pressed = FALSE
+    button_2.pressed = FALSE
+    button_3.pressed = FALSE
+    ctrl.direction = stop
+    ctrl.door_cmd = nop
+    ctrl.reset_1 = FALSE
+    ctrl.reset_2 = FALSE
+    ctrl.reset_3 = FALSE
+    ctrl.sensor = FALSE
+    ctrl.last_dir = up
+    cabin.N = 3
+    ctrl.pending_down = FALSE
+    ctrl.pending_up = FALSE
+    ctrl.pending_here = FALSE
+  -> State: 1.2 <-
+    button_1.pressed = TRUE
+    ctrl.door_cmd = open
+    ctrl.pending_here = TRUE
+  -> State: 1.3 <-
+    door.status = open
+    ctrl.door_cmd = nop
+    ctrl.sensor = TRUE
+  -> State: 1.4 <-
+    button_2.pressed = TRUE
+    ctrl.door_cmd = close
+    ctrl.reset_1 = TRUE
+    ctrl.sensor = FALSE
+    ctrl.pending_up = TRUE
+  -> State: 1.5 <-
+    door.status = closed
+    button_1.pressed = FALSE
+    ctrl.door_cmd = nop
+    ctrl.reset_1 = FALSE
+    ctrl.pending_here = FALSE
+  -> State: 1.6 <-
+    cabin.floor = 2
+    ctrl.direction = up
+    ctrl.pending_up = FALSE
+    ctrl.pending_here = TRUE
+  -> State: 1.7 <-
+    ctrl.direction = stop
+    ctrl.door_cmd = open
+  -> State: 1.8 <-
+    door.status = open
+    ctrl.door_cmd = nop
+    ctrl.sensor = TRUE
+  -> State: 1.9 <-
+    button_3.pressed = TRUE
+    ctrl.door_cmd = close
+    ctrl.reset_2 = TRUE
+    ctrl.sensor = FALSE
+    ctrl.pending_up = TRUE
+  -> State: 1.10 <-
+    door.status = closed
+    button_2.pressed = FALSE
+    ctrl.door_cmd = nop
+    ctrl.reset_2 = FALSE
+    ctrl.pending_here = FALSE
+  -> State: 1.11 <-
+    cabin.floor = 3
+    ctrl.direction = up
+    ctrl.pending_up = FALSE
+    ctrl.pending_here = TRUE
+  -> State: 1.12 <-
+    ctrl.direction = stop
+    ctrl.door_cmd = open
+  -> State: 1.13 <-
+    door.status = open
+    ctrl.door_cmd = nop
+    ctrl.sensor = TRUE
+  -> State: 1.14 <-
+    button_2.pressed = TRUE
+    ctrl.door_cmd = close
+    ctrl.reset_3 = TRUE
+    ctrl.sensor = FALSE
+    ctrl.pending_down = TRUE
+  -- Loop starts here
+  -> State: 1.15 <-
+    door.status = closed
+    button_3.pressed = FALSE
+    ctrl.door_cmd = nop
+    ctrl.reset_3 = FALSE
+    ctrl.pending_here = FALSE
+  -> State: 1.16 <-
+    cabin.floor = 2
+    ctrl.direction = down
+    ctrl.pending_down = FALSE
+    ctrl.pending_here = TRUE
+  -> State: 1.17 <-
+    ctrl.direction = stop
+    ctrl.door_cmd = open
+    ctrl.last_dir = down
+  -> State: 1.18 <-
+    door.status = open
+    ctrl.door_cmd = nop
+    ctrl.sensor = TRUE
+  -> State: 1.19 <-
+    button_3.pressed = TRUE
+    ctrl.door_cmd = close
+    ctrl.reset_2 = TRUE
+    ctrl.sensor = FALSE
+    ctrl.pending_up = TRUE
+  -> State: 1.20 <-
+    door.status = closed
+    button_2.pressed = FALSE
+    ctrl.door_cmd = nop
+    ctrl.reset_2 = FALSE
+    ctrl.pending_here = FALSE
+  -> State: 1.21 <-
+    cabin.floor = 3
+    ctrl.direction = up
+    ctrl.pending_up = FALSE
+    ctrl.pending_here = TRUE
+  -> State: 1.22 <-
+    ctrl.direction = stop
+    ctrl.door_cmd = open
+    ctrl.last_dir = up
+  -> State: 1.23 <-
+    door.status = open
+    button_2.pressed = TRUE
+    ctrl.door_cmd = close
+    ctrl.reset_3 = TRUE
+    ctrl.pending_down = TRUE
+  -> State: 1.24 <-
+    door.status = closed
+    button_3.pressed = FALSE
+    ctrl.door_cmd = nop
+    ctrl.reset_3 = FALSE
+    ctrl.pending_here = FALSE
+--/
